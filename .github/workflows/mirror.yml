@@ -1,0 +1,133 @@
+name: Mirror upstream releases to Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_owner:
+        description: "Upstream repo owner"
+        required: true
+        default: "re-noroi"
+        type: string
+      upstream_repo:
+        description: "Upstream repo name"
+        required: true
+        default: "kernel_sm8250"
+        type: string
+      keep_count:
+        description: "How many latest releases to mirror (default 8)"
+        required: false
+        default: "8"
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PAGES_BRANCH: main
+  DOWNLOADS_DIR: static/downloads
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PAGES_BRANCH }}
+          fetch-depth: 0
+
+      - name: Ensure downloads dir exists
+        run: mkdir -p "${DOWNLOADS_DIR}"
+
+      - name: Fetch latest releases list (limit keep_count)
+        id: list
+        env:
+          OWNER: ${{ inputs.upstream_owner }}
+          REPO: ${{ inputs.upstream_repo }}
+          KEEP: ${{ inputs.keep_count }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${OWNER}/${REPO}/releases?per_page=${KEEP}" --jq '.[].tag_name' > /tmp/tags.txt
+          echo "Tags to mirror:"
+          cat /tmp/tags.txt
+
+      - name: Mirror assets for each release
+        env:
+          OWNER: ${{ inputs.upstream_owner }}
+          REPO: ${{ inputs.upstream_repo }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          while read -r TAG; do
+            TARGET_DIR="${DOWNLOADS_DIR}/${TAG}"
+            if [ -d "$TARGET_DIR" ] && [ -n "$(ls -A "$TARGET_DIR" 2>/dev/null || true)" ]; then
+              echo "✅ Already mirrored: $TAG"
+              continue
+            fi
+            echo "⬇️  Downloading assets for $TAG ..."
+            mkdir -p "$TARGET_DIR"
+            gh release download "$TAG" \
+              --repo "${OWNER}/${REPO}" \
+              --dir  "$TARGET_DIR"
+          done </tmp/tags.txt
+
+      - name: Prune older mirrored releases (keep only latest.keep_count)
+        env:
+          KEEP: ${{ inputs.keep_count }}
+        run: |
+          cd "${DOWNLOADS_DIR}"
+          keep=$(cat /tmp/tags.txt)
+          for d in */ ; do
+            [ -d "$d" ] || continue
+            tag="${d%/}"
+            echo "$keep" | grep -qx "$tag" || { echo "🧹 Pruning $tag"; rm -rf -- "$d"; }
+          done
+          cd - >/dev/null
+
+      - name: Regenerate simple latest.json
+        run: |
+          set -euo pipefail
+          dates=()
+          # find all files in kept releases
+          while read -r TAG; do
+            for f in ${DOWNLOADS_DIR}/${TAG}/*; do
+              [ -f "$f" ] || continue
+              base=$(basename "$f")
+              # extract first 8-digit number
+              d=$(echo "$base" | grep -o '[0-9]\{8\}' | head -n1 || true)
+              if [ -n "$d" ]; then
+                dates+=("$d")
+              fi
+            done
+          done </tmp/tags.txt
+
+          # unique & sort descending
+          uniq_dates=$(printf "%s\n" "${dates[@]}" | sort -u -r)
+
+          mkdir -p "${DOWNLOADS_DIR}"
+          {
+            echo '{ "latest": ['
+            first=1
+            for d in $uniq_dates; do
+              if [ $first -eq 1 ]; then
+                printf '  "%s"' "$d"
+                first=0
+              else
+                printf ',\n  "%s"' "$d"
+              fi
+            done
+            echo '] }'
+          } > "${DOWNLOADS_DIR}/latest.json"
+
+          echo "latest.json content:"
+          cat "${DOWNLOADS_DIR}/latest.json"
+
+      - name: Commit & push changes
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${DOWNLOADS_DIR}"
+          git diff --cached --quiet && { echo "No changes to commit."; exit 0; }
+          git commit -m "Mirror latest ${{ inputs.keep_count }} releases from ${{ inputs.upstream_owner }}/${{ inputs.upstream_repo }}"
+          git push
