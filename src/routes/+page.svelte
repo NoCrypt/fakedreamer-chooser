@@ -93,7 +93,7 @@
   }
   async function fetchLatestLocal() {
     try {
-      const response = await fetch('/downloads/latest.json');
+      const response = await fetch(`${base}/downloads/latest.json`);
       const data = await response.json();
       latestLocal = data.latest;
     } catch (error) {
