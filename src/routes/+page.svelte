@@ -60,8 +60,14 @@
       if (localStorageShowAllVersions) {
         showAllVersions = localStorageShowAllVersions;
       }
+
+      const localStorageWantSideload = localStorage.getItem('wantSideload')
+      if (localStorageWantSideload){
+        wantSideload = localStorageWantSideload;
+      }
+      
     } catch (error) {
-      toast.error('Failed to retrieve variant from localStorage:', { description: error });
+      toast.error('Failed to retrieve from localStorage:', { description: error.message });
     }
     fetchReleases();
     fetchLatestLocal();
@@ -72,6 +78,9 @@
   });
   $effect(() => {
     localStorage.setItem('showAllVersions', showAllVersions);
+  });
+  $effect(() => {
+    localStorage.setItem('wantSideload', wantSideload);
   });
 
   $effect(() => {
@@ -310,7 +319,7 @@
           <Settings class="h-5 w-5" />
           Kernel Configuration
         </CardTitle>
-        <CardDescription>Configure the kernel to your needs.</CardDescription>
+        <CardDescription>Configure the kernel to your needs. It's auto-saved.</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
