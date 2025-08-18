@@ -4,8 +4,8 @@ import adapter from '@sveltejs/adapter-static';
 const config = {
   kit: {
     adapter: adapter(), paths: {
-      base: process.env.NODE_ENV === "production" ? "/fakedreamer-chooser" : "",
-    },
+			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH
+		}
   }
 };
 
