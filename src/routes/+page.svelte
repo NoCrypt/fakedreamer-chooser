@@ -503,7 +503,7 @@
               <div class="flex items-center gap-2">
                 <h3 class="font-medium">{release.tag_name}</h3>
                 {#if isWVariant}
-                  <Badge variant="secondary" class="bg-blue-700">For HyperOS A16</Badge>
+                  <Badge variant="secondary" class="bg-blue-700">A16 GSI/A16 HOS</Badge>
                 {/if}
                 {#if isLegacyVariant}
                   <Badge variant="secondary" class="bg-yellow-700">Legacy</Badge>
