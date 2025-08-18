@@ -4,7 +4,8 @@
   import * as Drawer from '$lib/components/ui/drawer/index.js';
   import { onMount } from 'svelte';
   import Input from './ui/input/input.svelte';
-  import { DownloadCloudIcon, DownloadIcon } from 'lucide-svelte';
+  import { CopyIcon, DownloadCloudIcon, DownloadIcon } from 'lucide-svelte';
+  import { toast } from 'svelte-sonner';
 
   const isMobile = new MediaQuery('max-width: 48rem');
   const title = 'Your file will be downloaded shortly';
@@ -32,7 +33,7 @@
           <DownloadCloudIcon class="h-5 w-5" />
           {title}
         </Drawer.Title>
-        <Drawer.Description>{@render inputs()}</Drawer.Description>
+        <Drawer.Description class="mb-20">{@render inputs()}</Drawer.Description>
       </Drawer.Header>
     </Drawer.Content>
   </Drawer.Root>
@@ -53,10 +54,37 @@
 
 {#snippet inputs()}
   <div>
-    Please rename the file manually to this:
+    Please rename the file manually.
     <br />
-    <code>
-      Filename: {fileName}, Sideload: {sideloadName}
-    </code>
+    <br />
+    File Name:
+    <button
+    onclick={()=>{
+      try {
+        navigator.clipboard.writeText(`FD-${fileName}`).then(toast.success("Copied to clipboard", {description: `FD-${fileName}`}))
+      } catch (e) {
+        toast.error("Error while trying to copy", {description: e.message})
+      }
+    }}
+      class="cursor-pointer flex h-9 w-max min-w-0 items-center rounded-md border border-input bg-background px-3 py-1 text-base shadow-xs ring-offset-background transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+      >
+      FD-{fileName}
+      <CopyIcon class="ml-3 h-3 w-3" />
+    </button>
+    <br />
+    Sideload File Name (inside ZIP):
+    <button
+    onclick={()=>{
+            try {
+        navigator.clipboard.writeText(sideloadName).then(toast.success("Copied to clipboard", {description: sideloadName}))
+      } catch (e) {
+        toast.error("Error while trying to copy", {description: e.message})
+      }
+    }}
+      class="cursor-pointer flex h-9 w-max min-w-0 items-center rounded-md border border-input bg-background px-3 py-1 text-base shadow-xs ring-offset-background transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+    >
+      {sideloadName}
+      <CopyIcon class="ml-3 h-3 w-3" />
+    </button>
   </div>
 {/snippet}
