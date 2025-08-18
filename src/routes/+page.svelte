@@ -157,28 +157,76 @@
     });
   }
 
+  async function fetchWithProgress(url, onProgress) {
+    const res = await fetch(url, {
+      credentials: 'omit'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+    const total = +res.headers.get('Content-Length'); // may be null if server doesn't send
+    const reader = res.body.getReader();
+    let received = 0;
+    const chunks = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+
+      if (total) {
+        onProgress(received / total); // fraction 0–1
+      } else {
+        onProgress(null); // no Content-Length
+      }
+    }
+
+    // concat chunks into a single Uint8Array
+    let size = chunks.reduce((s, c) => s + c.length, 0);
+    let buf = new Uint8Array(size);
+    let offset = 0;
+    for (const c of chunks) {
+      buf.set(c, offset);
+      offset += c.length;
+    }
+    return buf;
+  }
+
   async function handleDownload(ref, release) {
+    const asset = findMatchingAsset(release);
+    let loadingProgress = ref.srcElement.previousElementSibling.previousElementSibling;
+    console.log(loadingProgress);
+    let setProgress = (progress) => {
+      loadingProgress.style = `right: ${100 - progress * 100}%;`;
+      console.log('progress', progress);
+    };
     try {
       ref.srcElement.disabled = true;
-      const asset = findMatchingAsset(release);
+      setProgress(0);
+
       if (!asset) {
         return;
       }
-
       // const fileName = generateFileName();
       // link.href = asset.browser_download_url;
       // 1) Fetch ZIP
-      const res = await fetch(`${base}/downloads/${release?.tag_name}/${asset?.name}`, {
-        credentials: 'omit'
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-      let buf = new Uint8Array(await res.arrayBuffer());
+      // let progress = $state(0)
+
+      let buf = await fetchWithProgress(
+        `${base}/downloads/${release?.tag_name}/${asset?.name}`,
+        (f) => {
+          if (f !== null) setProgress(f > 0.75 ? 0.75 : f);
+        }
+      );
+      // let buf = new Uint8Array(await res.arrayBuffer());
 
       if (wantSideload) {
         // 2) Unzip to in-memory files
         const files = await new Promise((resolve, reject) => {
           unzip(buf, (err, data) => (err ? reject(err) : resolve(data)));
         });
+
+        setProgress(0.8);
 
         // 3) Rename dreamless file
         for (const [fname, bytes] of Object.entries(files)) {
@@ -189,12 +237,15 @@
           }
         }
 
+        setProgress(0.85);
+
         // 4) Re-zip all files
         buf = await new Promise((resolve, reject) => {
           zip(files, (err, data) => (err ? reject(err) : resolve(data)));
         });
-      }
 
+        setProgress(0.9);
+      }
 
       // 5) Trigger download
       const blob = new Blob([buf], { type: 'application/zip' });
@@ -209,7 +260,10 @@
         description: e.message
       });
     } finally {
+      setProgress(1);
+      await (() => new Promise((resolve) => setTimeout(resolve, 1000)))();
       ref.srcElement.disabled = false;
+      setProgress(0);
     }
   }
 
@@ -498,7 +552,15 @@
           {@const isLegacyVariant = release.tag_name.includes('legacy')}
           {@const isHotfix = release.name.includes('Hotfix')}
           {@const isReleaseCandidate = release.name.includes('-rc')}
-          <div class="flex items-center justify-between rounded-lg border p-4">
+          <div
+            class="relative flex items-center justify-between overflow-clip rounded-lg border p-4"
+          >
+            {#if isLatest}
+              <div
+                id={'l-' + asset?.name}
+                class="pointer-events-none absolute left-0 h-full rounded-lg bg-card-foreground opacity-10 transition-all duration-1000"
+              ></div>
+            {/if}
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <h3 class="font-medium">{release.tag_name}</h3>
