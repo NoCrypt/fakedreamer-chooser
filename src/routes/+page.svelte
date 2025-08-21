@@ -20,7 +20,8 @@
     Settings,
     Loader,
     LoaderPinwheel,
-    LoaderCircle
+    LoaderCircle,
+    CopyIcon
   } from 'lucide-svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -31,6 +32,8 @@
   import * as Accordion from '$lib/components/ui/accordion/index.js';
   import Copy from '$lib/components/copy.svelte';
   import { base } from '$app/paths';
+  import Separator from '$lib/components/ui/separator/separator.svelte';
+  import Deviceitem from '$lib/components/deviceitem.svelte';
 
   let releases = $state([]);
   let latestLocal = $state([]);
@@ -61,11 +64,10 @@
         showAllVersions = localStorageShowAllVersions;
       }
 
-      const localStorageWantSideload = localStorage.getItem('wantSideload')
-      if (localStorageWantSideload){
+      const localStorageWantSideload = localStorage.getItem('wantSideload');
+      if (localStorageWantSideload) {
         wantSideload = localStorageWantSideload;
       }
-      
     } catch (error) {
       toast.error('Failed to retrieve from localStorage:', { description: error.message });
     }
@@ -84,7 +86,7 @@
   });
 
   $effect(() => {
-    if (variant.device === 'apollo' && variant.battery === 'j3s') {
+    if (variant.device !== 'alioth' && variant.battery === 'j3s') {
       variant.battery = 'stk';
     }
   });
@@ -96,6 +98,7 @@
       releases = data;
     } catch (error) {
       console.error('Failed to fetch releases:', error);
+      toast.error('Failed to fetch releases', { description: error.message });
     } finally {
       loading = false;
     }
@@ -146,6 +149,8 @@
 
     return parts.join('-') + '.dreamless';
   }
+
+  let generatedSideloadFileName = $derived(generateSideloadFileName(variant));
 
   function findMatchingAsset(release) {
     const deviceName = variant.device;
@@ -298,7 +303,7 @@
     <!-- Header -->
     <div class="mt-8 space-y-2 text-center">
       <h1 class="flex items-center justify-center gap-2 text-3xl font-bold">
-        <Cpu class="h-8 w-8" />
+        <!-- <Cpu class="h-8 w-8" /> -->
         FakeDreamer Downloader
       </h1>
       <p class="text-muted-foreground">Download custom kernel variants for your device</p>
@@ -326,20 +331,23 @@
           <!-- Device Selection -->
           <div class="space-y-2">
             <Label class="flex items-center gap-1 text-sm font-medium">
-              <Smartphone class="h-5 w-5" />
+              <Smartphone class="h-4 w-4" />
               Device
-              <Info>
-                Alioth: Xiaomi Poco F3 / Xiaomi Mi 11X / Redmi K40
-                <br /> Apollo: Xiaomi Mi 10T / Mi 10T Pro / Redmi K30S Ultra
-              </Info>
             </Label>
             <Select type="single" bind:value={variant.device}>
               <SelectTrigger>
-                <!-- <SelectValue /> -->{variant.device === 'alioth' ? 'Alioth' : 'Apollo'}
+                {variant.device.charAt(0).toUpperCase() + variant.device.slice(1)}
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="alioth">Alioth</SelectItem>
-                <SelectItem value="apollo">Apollo</SelectItem>
+                <SelectItem value="alioth">
+                  <Deviceitem img="./f3.jpg" title="Alioth" desc="Xiaomi Poco F3 / Xiaomi Mi 11X / Redmi K40"/>
+                </SelectItem>
+                <SelectItem value="apollo">
+                  <Deviceitem img="./mi10t.jpg" title="Apollo" desc="Xiaomi Mi 10T / Mi 10T Pro / Redmi K30S Ultra"/>
+                </SelectItem>
+                <SelectItem value="munch">
+                  <Deviceitem img="./f4.jpg" title="Munch" isNew desc="Xiaomi Poco F4 / Redmi K40S"/>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -381,6 +389,7 @@
                 Stock Battery is 4500mAh
                 <br /> If you use OEM battery or Apollo battery on Alioth
                 <br /> then use the 5000mAh/j3s
+                <br /> <strong>Note:</strong> This value is ignored on Apollo and Munch
               </Info>
             </Label>
             <Select type="single" bind:value={variant.battery}>
@@ -391,9 +400,9 @@
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="stk">Stock Battery (-stk)</SelectItem>
-                <SelectItem value="j3s">
-                  5000mAh Battery (-j3s) {variant.device === 'apollo' ? '(Limited support)' : ''}
-                </SelectItem>
+                {#if variant.device === 'alioth'}
+                  <SelectItem value="j3s">5000mAh Battery (-j3s)</SelectItem>
+                {/if}
               </SelectContent>
             </Select>
           </div>
@@ -491,6 +500,45 @@
               <br /> <strong>Note:</strong> This will make the process takes a while.
             </Info>
           </Label>
+        </div>
+        <Separator />
+        <div class="flex flex-col md:flex-row gap-2 w-full justify-end items-center">
+          <button
+            onclick={() => {
+              try {
+                navigator.clipboard
+                  .writeText(`FD-${generatedFileName}`)
+                  .then(
+                    toast.success('Copied to clipboard', { description: `FD-${generatedFileName}` })
+                  );
+              } catch (e) {
+                toast.error('Error while trying to copy', { description: e.message });
+              }
+            }}
+            class="flex h-9 w-max cursor-pointer items-center rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+          >
+            FD-{generatedFileName}
+            <CopyIcon class="ml-3 h-3 w-3" />
+          </button>
+          {#if wantSideload}
+            <button
+              onclick={() => {
+                try {
+                  navigator.clipboard.writeText(`${generatedSideloadFileName}`).then(
+                    toast.success('Copied to clipboard', {
+                      description: `${generatedSideloadFileName}`
+                    })
+                  );
+                } catch (e) {
+                  toast.error('Error while trying to copy', { description: e.message });
+                }
+              }}
+              class="flex h-9 w-max cursor-pointer items-center rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+            >
+              {generatedSideloadFileName}
+              <CopyIcon class="ml-3 h-3 w-3" />
+            </button>
+          {/if}
         </div>
       </CardContent>
     </Card>
