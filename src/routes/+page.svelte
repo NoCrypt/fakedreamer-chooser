@@ -85,12 +85,17 @@
     localStorage.setItem('wantSideload', wantSideload);
   });
 
+  
   $effect(() => {
     if (variant.device !== 'alioth' && variant.battery === 'j3s') {
       variant.battery = 'stk';
     }
   });
-
+  $effect(() => {
+    if (variant.device !== 'alioth' && variant.ui === 'ir') {
+      variant.ui = 'aosp';
+    }
+  });
   async function fetchReleases() {
     try {
       const response = await fetch('https://api.github.com/repos/re-noroi/kernel_sm8250/releases');
@@ -117,7 +122,7 @@
     const parts = [];
 
     // Battery is required
-    parts.push(variant.battery);
+    if(variant.device === 'alioth') parts.push(variant.battery);
 
     // Add optional parts
     if (variant.ui !== 'aosp') parts.push(variant.ui);
@@ -134,7 +139,7 @@
     const parts = [];
 
     // Battery
-    parts.push(variant.battery);
+    if(variant.device === 'alioth') parts.push(variant.battery);
 
     // UI - convert "aosp" to "aosp"
     if (variant.ui === 'aosp') {
@@ -412,9 +417,11 @@
             <Label class="flex items-center gap-1 text-sm font-medium">
               DTBO
               <Info>
-                Most of the new AOSP ROMs are based on LineageOS.
-                <br /> Please check if your ROM is using the new IR Driver or not.
-                <br /> MIUI/HyperOS user should ALWAYS choose the MIUI
+                {#if variant.device === 'alioth'}
+                  Most of the new AOSP ROMs are based on LineageOS.
+                  <br /> Please check if your ROM is using the new IR Driver or not.<br />
+                {/if}
+                MIUI/HyperOS user should ALWAYS choose the MIUI
               </Info>
             </Label>
 
@@ -428,7 +435,9 @@
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="aosp">AOSP ROM (default)</SelectItem>
-                <SelectItem value="ir">LineageOS/LOS Based (-ir)</SelectItem>
+                {#if variant.device === 'alioth'}
+                  <SelectItem value="ir">LineageOS/LOS Based (-ir)</SelectItem>
+                {/if}
                 <SelectItem value="miui">MIUI/HyperOS (-miui)</SelectItem>
               </SelectContent>
             </Select>
