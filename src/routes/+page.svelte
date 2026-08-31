@@ -160,12 +160,13 @@
   function findMatchingAsset(release) {
     const deviceName = variant.device;
     const ksuVariant =
-      variant.ksu === 'non-ksu' ? 'noksu' : variant.ksu === 'ksu' ? 'next' : variant.ksu;
+      variant.ksu === 'non-ksu' ? 'noksu' : variant.ksu === 'ksu' ? 'next|-ksu' : variant.ksu;
+    const ksuRegex = new RegExp(`${ksuVariant}`, "i");
 
     return release.assets.find(
       (asset) =>
         asset.name.toLowerCase().includes(deviceName) &&
-        asset.name.toLowerCase().includes(ksuVariant)
+        asset.name.toLowerCase().match(ksuRegex)
     );
   }
 
