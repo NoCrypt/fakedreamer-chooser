@@ -615,7 +615,7 @@
         {@const asset = findMatchingAsset(release)}
         {@const match = latestLocal.some((term) => asset?.name.includes(term))}
         {#if isLatest ? match : !match}
-          {@const isWVariant = release.tag_name.matches(/-w/i)}
+          {@const isWVariant = release.tag_name.match(/-w/i)}
           {@const isLegacyVariant = release.tag_name.includes('legacy')}
           {@const isHotfix = release.name.includes('Hotfix')}
           {@const isReleaseCandidate = release.name.includes('-rc')}
