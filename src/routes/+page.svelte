@@ -615,7 +615,7 @@
         {@const asset = findMatchingAsset(release)}
         {@const match = latestLocal.some((term) => asset?.name.includes(term))}
         {#if isLatest ? match : !match}
-          {@const isWVariant = release.tag_name.includes('-W')}
+          {@const isWVariant = release.tag_name.matches(/-w/i)}
           {@const isLegacyVariant = release.tag_name.includes('legacy')}
           {@const isHotfix = release.name.includes('Hotfix')}
           {@const isReleaseCandidate = release.name.includes('-rc')}
@@ -632,7 +632,7 @@
               <div class="flex items-center gap-2">
                 <h3 class="font-medium">{release.tag_name}</h3>
                 {#if isWVariant}
-                  <Badge variant="secondary" class="bg-blue-700">A16 GSI/A16 HOS</Badge>
+                  <Badge variant="secondary" class="bg-blue-700">BPF</Badge>
                 {/if}
                 {#if isLegacyVariant}
                   <Badge variant="secondary" class="bg-yellow-700">Legacy</Badge>
