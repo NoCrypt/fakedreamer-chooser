@@ -75,7 +75,7 @@ jobs:
             gh release download "$TAG" \
               --repo "${OWNER}/${REPO}" \
               --dir  "$TARGET_DIR"
-              --cobbler
+              --clobber
           done </tmp/tags.txt
 
       - name: Prune older mirrored releases (keep only latest.keep_count)
