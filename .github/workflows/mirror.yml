@@ -18,6 +18,11 @@ on:
         required: false
         default: "8"
         type: string
+      force:
+        description: "Force re-download even if already mirrored"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -56,11 +61,12 @@ jobs:
           OWNER: ${{ inputs.upstream_owner }}
           REPO: ${{ inputs.upstream_repo }}
           GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
         run: |
           set -euo pipefail
           while read -r TAG; do
             TARGET_DIR="${DOWNLOADS_DIR}/${TAG}"
-            if [ -d "$TARGET_DIR" ] && [ -n "$(ls -A "$TARGET_DIR" 2>/dev/null || true)" ]; then
+            if [ "$FORCE" != "true" ] && [ -d "$TARGET_DIR" ] && [ -n "$(ls -A "$TARGET_DIR" 2>/dev/null || true)" ]; then
               echo "✅ Already mirrored: $TAG"
               continue
             fi
