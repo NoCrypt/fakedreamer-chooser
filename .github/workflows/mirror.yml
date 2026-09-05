@@ -74,7 +74,7 @@ jobs:
             mkdir -p "$TARGET_DIR"
             gh release download "$TAG" \
               --repo "${OWNER}/${REPO}" \
-              --dir  "$TARGET_DIR"
+              --dir  "$TARGET_DIR" \
               --clobber
           done </tmp/tags.txt
 
